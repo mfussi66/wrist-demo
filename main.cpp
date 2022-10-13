@@ -10,6 +10,7 @@
 #include <yarp/os/ResourceFinder.h>
 #include <yarp/os/Time.h>
 #include <yarp/os/Port.h>
+#include <yarp/os/BufferedPort.h>
 #include <yarp/os/Bottle.h>
 
 #include <cstdlib>
@@ -38,7 +39,7 @@ private:
     yarp::os::Bottle bot_traj;
     yarp::os::Bottle bot_ref;
     yarp::os::Bottle bot_out;
-    yarp::os::Port input;
+    yarp::os::BufferedPort<yarp::os::Bottle> input;
     
    std::array<double, 3> pidKs;
 
@@ -73,17 +74,10 @@ private:
         }
         
         if(!port_outs.open("/CbWrist/pidout:o") ||
-            port_ref.open("/CbWrist/refs:o") ||
-            port_trajectory.open("/CbWrist/traj:o")) {
+            !port_ref.open("/CbWrist/refs:o") ||
+            !port_trajectory.open("/CbWrist/traj:o")) {
             yError() << "Could not open one or more ports!";
             return false;            
-        }
-        
-        if(!yarp::os::Network::connect(port_outs.getName(), "/scope/pidout:i") ||
-            yarp::os::Network::connect(port_ref.getName(), "/scope/refs:i") ||
-            yarp::os::Network::connect(port_trajectory.getName(), "/scope/traj:i")) {
-            yError() << "Could not connect to scope ports!";
-            return false;
         }
         
         input.open("/CbWrist/pidK:i");
@@ -95,44 +89,56 @@ private:
         iPidCtrl->getPidReferences(yarp::dev::VOCAB_PIDTYPE_POSITION, refs.data());
         iPidCtrl->getPidErrors(yarp::dev::VOCAB_PIDTYPE_POSITION, errs.data());
         iPidCtrl->getPidOutputs(yarp::dev::VOCAB_PIDTYPE_POSITION, currs.data());
-                
+        
         for(uint8_t i = 0; i < 3; ++i) {
             bot_out.addFloat64(currs[i]);
             bot_ref.addFloat64(refs[i]);
             bot_traj.addFloat64(refs[i] - errs[i]);
         }
         
+//        yInfo() << "ref" << refs[0] <<refs[1] <<refs[2]; 
+//        yInfo() << "cur" << currs[0] <<currs[1] <<currs[2]; 
+//        yInfo() << "err" << errs[0] <<errs[1] <<errs[2]; 
+
         if(!port_outs.write(bot_out))
             yError() << "Could not write to port" << port_outs.getName();
         if(!port_trajectory.write(bot_traj)) 
             yError() << "Could not write to port" << port_trajectory.getName();
         if(!port_ref.write(bot_ref)) 
             yError() << "Could not write to port" << port_ref.getName();
-                
+        
         bot_out.clear();
         bot_traj.clear();
         bot_ref.clear();
         
-        yarp::os::Bottle reader;
-        if(input.read(reader)) {
-            yarp::os::Bottle *r = reader.get(0).asList();
-                
+        
+        //yInfo() << "before read";
+        yarp::os::Bottle *reader = input.read(false);
+        //yInfo() << "before read 2";
+
+        if(reader) {                
             for(uint8_t i = 0; i < 3; ++i) { 
-                pidKs[i] = r->get(i).asFloat64();
+                pidKs[i] = reader->get(i).asFloat64();
             }
             
             yInfo() << "Received pid gains: (Kp Kd Ki) (" << pidKs[0] 
                     << pidKs[1] << pidKs[2] << ")";
             
-            yarp::dev::Pid *p;
-            iPidCtrl->getPids(yarp::dev::VOCAB_PIDTYPE_POSITION, p);
+
+            std::array<yarp::dev::Pid, 3> p;
+            iPidCtrl->getPids(yarp::dev::VOCAB_PIDTYPE_POSITION, p.data());
             
-            p->setKp(pidKs[0]);
-            p->setKd(pidKs[1]);
-            p->setKi(pidKs[2]);
+            for(uint8_t i = 0; i < 3; ++i) {
+                p[i].setKp(pidKs[0]);
+                p[i].setKd(pidKs[1]);
+                p[i].setKi(pidKs[2]);
+            }
+            
+            iPidCtrl->setPids(yarp::dev::VOCAB_PIDTYPE_POSITION, p.data());
             
             yInfo() << "Set pid params";
         }
+        //yInfo() << "after";
         
         return true;
     }
@@ -142,13 +148,13 @@ private:
     };
     
     bool close() {
-        
-        yInfo() << "Closing connections";
-        
-        yarp::os::Network::disconnect(port_outs.getName(), "/scope/pidout:i");
-        yarp::os::Network::disconnect(port_ref.getName(), "/scope/refs:i");
-        yarp::os::Network::disconnect(port_trajectory.getName(), "/scope/traj:i");
-                
+        driver.close();
+//         yInfo() << "Closing connections";
+//         
+//         yarp::os::Network::disconnect(port_outs.getName(), "/scope/pidout:i");
+//         yarp::os::Network::disconnect(port_ref.getName(), "/scope/refs:i");
+//         yarp::os::Network::disconnect(port_trajectory.getName(), "/scope/traj:i");
+//                 
         return true;
     }
     

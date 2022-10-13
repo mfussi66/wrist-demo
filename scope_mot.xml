@@ -1,41 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<portscope rows="3" columns="2" carrier="mcast">
-    <plot gridx="0"
-          gridy="0"
-          title="Yaw"
-          size="60"
-          minval="-100"
-          maxval="100"
-          bgcolor="white">
-        <graph remote="/nfa/wrist_mc/state:o"
-               index="0"
-               color="Blue"
-               title="Yaw" />
-    <plot gridx="0"
-          gridy="1"
-          title="Pitch"
-          size="60"
-          minval="-100"
-          maxval="100"
-          bgcolor="white">
-        <graph remote="/nfa/wrist_mc/state:o"
-               index="1"
-               color="Red"
-               title="Pitch" />
-    </plot>
-    <plot gridx="0"
-          gridy="2"
-          title="Roll"
-          size="60"
-          minval="-100"
-          maxval="100"
-          bgcolor="white">
-        <graph remote="/nfa/wrist_mc/state:o"
-               index="2"
-               color="Green"
-               title="Roll" />
-    </plot>
-    <plot gridx="1"
+<portscope rows="3" columns="1" carrier="mcast">
+   <plot gridx="0"
           gridy="0"
           title="Motor0"
           size="60"
@@ -51,7 +16,7 @@
                color="Red"
                title="Traj0" />
     </plot>
-    <plot gridx="1"
+    <plot gridx="0"
           gridy="1"
           title="Motor1"
           minval="-100"
@@ -67,7 +32,7 @@
                color="Red"
                title="Traj1" />
     </plot>
-    <plot gridx="1"
+    <plot gridx="0"
           gridy="2"
           title="Motor2"
           minval="-100"
